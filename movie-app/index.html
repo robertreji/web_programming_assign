@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEC Movies - BookMyShow Inspired Movie Discovery</title>
+  <meta name="description" content="data-driven movie discovery application built for GEC Wayanad" />
+  
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-logo">
+        <span class="logo-badge">GEC</span>
+        <span class="logo-text">MOVIES</span>
+      </div>
+
+      <div class="search-box-wrapper">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input 
+            type="text" 
+            id="movie-search-input" 
+            placeholder="Search movies by title, genre, language..." 
+            aria-label="Search movies" 
+            autocomplete="off" 
+          />
+          <button type="button" id="search-clear-btn" class="clear-btn hidden" aria-label="Clear search">✕</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero-banner">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1 class="hero-title">Experience Cinema at GEC Movies</h1>
+    </div>
+  </section>
+
+  <main class="main-content" id="movies-section">
+    
+    <section class="filter-section" id="filters-section" aria-label="Movie Filters">
+      <div class="section-header">
+        <h2 class="section-title">Movies</h2>
+        <span class="result-count" id="result-counter">Showing 0 movies</span>
+      </div>
+
+      <div class="filter-chips-container" role="tablist" aria-label="Category Filters">
+        <button class="filter-chip active" data-filter="All" role="tab" aria-selected="true">All</button>
+        <button class="filter-chip" data-filter="Action" role="tab">Action</button>
+        <button class="filter-chip" data-filter="Comedy" role="tab">Comedy</button>
+        <button class="filter-chip" data-filter="Drama" role="tab">Drama</button>
+        <button class="filter-chip" data-filter="Thriller" role="tab">Thriller</button>
+        <button class="filter-chip" data-filter="Malayalam" role="tab">Malayalam</button>
+        <button class="filter-chip" data-filter="English" role="tab">English</button>
+        <button class="filter-chip" data-filter="Tamil" role="tab">Tamil</button>
+      </div>
+    </section>
+
+    <section class="movies-grid-container" aria-live="polite">
+      <div id="movies-grid" class="movies-grid">
+      </div>
+
+      <div id="no-movies-found" class="no-movies-found hidden">
+        <div class="empty-icon">🎬</div>
+        <h3 class="empty-title">No movies found.</h3>
+        <p class="empty-desc">We couldn't find any movies matching your search or selected filter.</p>
+        <button id="reset-filters-btn" class="reset-btn">Reset All Filters</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <span class="footer-logo">GEC MOVIES</span>
+        <p>Government Engineering College Wayanad • Web Programming Assignment</p>
+      </div>
+      <p class="footer-copy">&copy; 2026 GEC Wayanad. Built with Vanilla JS &amp; Static JSON Architecture.</p>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
