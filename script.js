@@ -1,22 +1,59 @@
 
-document.addEventListener('DOMContentLoaded', () => {
 
+document.addEventListener('DOMContentLoaded', () => {
+  // DOM References
   const moviesGrid = document.getElementById('movies-grid');
   const noMoviesFound = document.getElementById('no-movies-found');
+  const loadingState = document.getElementById('loading-state');
+  const fetchError = document.getElementById('fetch-error');
+  const fetchErrorMsg = document.getElementById('fetch-error-msg');
+  const retryFetchBtn = document.getElementById('retry-fetch-btn');
   const searchInput = document.getElementById('movie-search-input');
   const clearSearchBtn = document.getElementById('search-clear-btn');
   const filterChips = document.querySelectorAll('.filter-chip');
   const resultCounter = document.getElementById('result-counter');
   const resetFiltersBtn = document.getElementById('reset-filters-btn');
 
+  const cardTemplateEl = document.getElementById('movie-card-template');
+  const cardTemplate = cardTemplateEl ? cardTemplateEl.innerHTML : '';
+
+  let allMovies = [];
   let currentFilter = 'All';
   let searchQuery = '';
 
-  const movies = (typeof movieData !== 'undefined' && Array.isArray(movieData.graph)) 
-    ? movieData.graph 
-    : [];
+  /**
+   * Toggle the loading UI state
+   * @param {boolean} isLoading
+   */
+  function setLoadingState(isLoading) {
+    if (isLoading) {
+      loadingState.classList.remove('hidden');
+      fetchError.classList.add('hidden');
+      moviesGrid.classList.add('hidden');
+      noMoviesFound.classList.add('hidden');
+      resultCounter.textContent = 'Connecting to service...';
+    } else {
+      loadingState.classList.add('hidden');
+    }
+  }
 
+  /**
+   * Display the failed fetch request error UI state
+   * @param {string} message
+   */
+  function setErrorState(message) {
+    loadingState.classList.add('hidden');
+    moviesGrid.classList.add('hidden');
+    noMoviesFound.classList.add('hidden');
+    fetchError.classList.remove('hidden');
+    fetchErrorMsg.textContent = message || 'Could not communicate with the server endpoint.';
+    resultCounter.textContent = 'Service unavailable';
+  }
 
+  /**
+   * Render movie list using Mustache.js if available, falling back to Vanilla DOM
+   * @param {Array} movieStore
+   */
   function renderMovies(movieStore) {
     moviesGrid.innerHTML = '';
 
@@ -31,6 +68,32 @@ document.addEventListener('DOMContentLoaded', () => {
     moviesGrid.classList.remove('hidden');
     resultCounter.textContent = `Showing ${movieStore.length} ${movieStore.length === 1 ? 'movie' : 'movies'}`;
 
+    if (typeof Mustache !== 'undefined' && cardTemplate) {
+      const renderedCards = movieStore.map(movie => {
+        const genreString = Array.isArray(movie.genre) 
+          ? movie.genre.join(' • ') 
+          : (movie.category || '');
+        const fallbackUrl = 'https://via.placeholder.com/400x600/1f2937/9ca3af?text=' + encodeURIComponent(movie.title);
+        const posterUrl = movie.poster || movie.webPoster || fallbackUrl;
+
+        return Mustache.render(cardTemplate, {
+          id: movie.id,
+          title: movie.title,
+          category: movie.category,
+          language: movie.language,
+          genreString: genreString,
+          rating: movie.rating,
+          year: movie.year,
+          duration: movie.duration || '',
+          posterUrl: posterUrl,
+          fallbackUrl: movie.webPoster || fallbackUrl
+        });
+      }).join('');
+
+      moviesGrid.innerHTML = renderedCards;
+      return;
+    }
+
     const fragment = document.createDocumentFragment();
 
     movieStore.forEach(movie => {
@@ -39,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.setAttribute('data-id', movie.id);
       card.setAttribute('tabindex', '0');
 
-       const genreString = Array.isArray(movie.genre) 
+      const genreString = Array.isArray(movie.genre) 
         ? movie.genre.join(' • ') 
         : (movie.category || '');
 
@@ -75,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyFilterAndSearch() {
     const query = searchQuery.trim().toLowerCase();
 
-    const filteredMovies = movies.filter(movie => {
+    const filteredMovies = allMovies.filter(movie => {
       let matchesFilter = false;
       if (currentFilter === 'All') {
         matchesFilter = true;
@@ -91,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleMatch = movie.title && movie.title.toLowerCase().includes(query);
         const catMatch = movie.category && movie.category.toLowerCase().includes(query);
         const langMatch = movie.language && movie.language.toLowerCase().includes(query);
-        const genreMatch = Array.isArray(movie.genre) && movie.genre.some(g => g.toLowerCase().includes(query));
+        const genreMatch = Array.isArray(movie.genre) && movie.genre.some(g => g.toLowerCase() === query);
         const yearMatch = movie.year && movie.year.toString().includes(query);
         
         matchesSearch = titleMatch || catMatch || langMatch || genreMatch || yearMatch;
@@ -101,6 +164,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderMovies(filteredMovies);
+  }
+
+  /**
+   * Asynchronously fetch movie data from PHP REST endpoint via Fetch API
+   * @param {string} endpointUrl 
+   */
+  async function fetchMovies(endpointUrl = 'api.php') {
+    setLoadingState(true);
+
+    try {
+      const response = await fetch(endpointUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        let errMessage = `Server returned HTTP status ${response.status} (${response.statusText})`;
+        try {
+          const errBody = await response.json();
+          if (errBody && errBody.message) {
+            errMessage = errBody.message;
+          }
+        } catch (_) {
+          // If body is not JSON, retain HTTP status message
+        }
+        throw new Error(errMessage);
+      }
+
+      const payload = await response.json();
+
+      if (!payload || !Array.isArray(payload.graph)) {
+        throw new Error('Received unexpected data format: missing "graph" array.');
+      }
+
+      allMovies = payload.graph;
+      setLoadingState(false);
+      applyFilterAndSearch();
+    } catch (err) {
+      console.error('Fetch operation failed:', err);
+      setErrorState(err.message || 'Failed to connect to the PHP data endpoint.');
+    }
   }
 
   searchInput.addEventListener('input', (e) => {
@@ -154,6 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
     applyFilterAndSearch();
   });
 
+  retryFetchBtn.addEventListener('click', () => {
+    fetchMovies();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && document.activeElement !== searchInput) {
       e.preventDefault();
@@ -167,5 +277,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  renderMovies(movies);
+  fetchMovies();
 });

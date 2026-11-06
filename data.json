@@ -1,5 +1,5 @@
-
-const movieData = {
+{
+  "@context": "https://w3id.org/ro/crate/1.1/context",
   "graph": [
     {
       "id": "movie-001",
@@ -142,5 +142,5 @@ const movieData = {
       "description": "A high-octane fantasy action saga set in a dystopian futuristic India where ancient mythologies clash with cybernetic warriors."
     }
   ]
-};
+}
 

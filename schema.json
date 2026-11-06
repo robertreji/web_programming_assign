@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gecwayanad.ac.in/schemas/movie-dataset.json",
+  "title": "GEC Wayanad Movie Dataset Schema",
+  "description": "JSON Schema validating RO-Crate aligned movie graph metadata for Assignment 2",
+  "type": "object",
+  "required": ["graph"],
+  "properties": {
+    "@context": {
+      "type": "string",
+      "description": "Context URI for linked data and RO-Crate alignment"
+    },
+    "graph": {
+      "type": "array",
+      "description": "Collection of movie entities in the dataset",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Movie"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Movie": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "title",
+        "category",
+        "language",
+        "genre",
+        "rating",
+        "year",
+        "webPoster"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^movie-[0-9]{3}$",
+          "description": "Unique identifier for the movie entity"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Movie"],
+          "description": "Schema.org entity type"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Official title of the movie"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary categorization"
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Audio / original release language"
+        },
+        "genre": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Array of genres associated with the movie"
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Rating score out of 10"
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100,
+          "description": "Release year"
+        },
+        "poster": {
+          "type": "string",
+          "description": "Relative path to local poster asset"
+        },
+        "webPoster": {
+          "type": "string",
+          "format": "uri",
+          "description": "Remote fallback poster URL"
+        },
+        "duration": {
+          "type": "string",
+          "description": "Runtime string (e.g. 2h 38m)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Synopsis or summary of the plot"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+
