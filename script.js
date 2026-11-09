@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const editorPanel = $('editor-panel');
   const movieForm = $('movie-form');
   const loginModal = $('login-modal');
+  const apiBase = 'api.php';
   let currentFilter = 'All';
   let currentQuery = '';
   let movies = [];
@@ -31,6 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return payload;
   }
 
+  function apiUrl(route, parameters = {}) {
+    const params = new URLSearchParams({ route, ...parameters });
+    return `${apiBase}?${params}`;
+  }
+
   function renderMovies(items) {
     moviesGrid.innerHTML = items.map(movie => Mustache.render(cardTemplate, {
       ...movie,
@@ -47,10 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingState.classList.remove('hidden');
     fetchError.classList.add('hidden');
     try {
-      const params = new URLSearchParams();
-      if (currentQuery) params.set('q', currentQuery);
-      if (currentFilter !== 'All') params.set('category', currentFilter);
-      const payload = await request(`api/items?${params}`);
+      const parameters = {};
+      if (currentQuery) parameters.q = currentQuery;
+      if (currentFilter !== 'All') parameters.category = currentFilter;
+      const payload = await request(apiUrl('items', parameters));
       movies = payload.items || [];
       renderMovies(movies);
     } catch (error) {
@@ -93,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault();
     try {
-      await request('api/login', {
+      await request(apiUrl('login'), {
         method: 'POST',
         body: JSON.stringify({ username: $('login-username').value, password: $('login-password').value })
       });
@@ -121,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
       description: $('movie-description').value
     };
     try {
-      await request(id ? `api/items/${id}` : 'api/items', {
+      await request(apiUrl(id ? `items/${id}` : 'items'), {
         method: id ? 'PUT' : 'POST',
         body: JSON.stringify(body)
       });
@@ -140,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('login-btn').addEventListener('click', () => loginModal.classList.remove('hidden'));
   $('close-login-btn').addEventListener('click', () => loginModal.classList.add('hidden'));
   $('logout-btn').addEventListener('click', async () => {
-    await request('api/logout', { method: 'POST' });
+    await request(apiUrl('logout'), { method: 'POST' });
     $('logout-btn').classList.add('hidden');
     $('login-btn').classList.remove('hidden');
     $('add-movie-btn').classList.add('hidden');

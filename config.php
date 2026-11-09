@@ -1,16 +1,11 @@
 <?php
 
-/*
- * Copy the database values from the InfinityFree Control Panel:
- * MySQL Databases -> MySQL Hostname, database name, username and password.
- * Keep this file outside public version control if you add real credentials.
- */
+
 const DB_HOST = 'sql203.infinityfree.com';
 const DB_NAME = 'if0_43371009_db';
 const DB_USER = 'if0_43371009';
 const DB_PASSWORD = 'jquxpvcjhscgZ';
 
-// Basic assignment authentication. Change both values before deployment.
 const AUTH_USERNAME = 'admin';
 const AUTH_PASSWORD = 'admin123';
 

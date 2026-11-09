@@ -130,7 +130,8 @@ try {
     $database = getDatabase();
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $path = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '', '/');
-    $parts = explode('/', $path);
+    $route = trim((string)($_GET['route'] ?? ''), '/');
+    $parts = explode('/', $route !== '' ? $route : $path);
     $resource = end($parts);
 
     if ($method === 'OPTIONS') {
