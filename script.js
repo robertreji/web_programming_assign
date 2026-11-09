@@ -1,281 +1,177 @@
-
-
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM References
-  const moviesGrid = document.getElementById('movies-grid');
-  const noMoviesFound = document.getElementById('no-movies-found');
-  const loadingState = document.getElementById('loading-state');
-  const fetchError = document.getElementById('fetch-error');
-  const fetchErrorMsg = document.getElementById('fetch-error-msg');
-  const retryFetchBtn = document.getElementById('retry-fetch-btn');
-  const searchInput = document.getElementById('movie-search-input');
-  const clearSearchBtn = document.getElementById('search-clear-btn');
-  const filterChips = document.querySelectorAll('.filter-chip');
-  const resultCounter = document.getElementById('result-counter');
-  const resetFiltersBtn = document.getElementById('reset-filters-btn');
-
-  const cardTemplateEl = document.getElementById('movie-card-template');
-  const cardTemplate = cardTemplateEl ? cardTemplateEl.innerHTML : '';
-
-  let allMovies = [];
+  const $ = id => document.getElementById(id);
+  const moviesGrid = $('movies-grid');
+  const noMoviesFound = $('no-movies-found');
+  const loadingState = $('loading-state');
+  const fetchError = $('fetch-error');
+  const resultCounter = $('result-counter');
+  const searchInput = $('movie-search-input');
+  const clearSearchBtn = $('search-clear-btn');
+  const cardTemplate = $('movie-card-template').innerHTML;
+  const editorPanel = $('editor-panel');
+  const movieForm = $('movie-form');
+  const loginModal = $('login-modal');
   let currentFilter = 'All';
-  let searchQuery = '';
+  let currentQuery = '';
+  let movies = [];
 
-  /**
-   * Toggle the loading UI state
-   * @param {boolean} isLoading
-   */
-  function setLoadingState(isLoading) {
-    if (isLoading) {
-      loadingState.classList.remove('hidden');
-      fetchError.classList.add('hidden');
+  function showMessage(element, message, error = true) {
+    element.textContent = message;
+    element.classList.toggle('error-message', error);
+  }
+
+  async function request(url, options = {}) {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
+      ...options
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.message || `Request failed (${response.status}).`);
+    return payload;
+  }
+
+  function renderMovies(items) {
+    moviesGrid.innerHTML = items.map(movie => Mustache.render(cardTemplate, {
+      ...movie,
+      genreString: movie.genre.join(' • '),
+      posterUrl: movie.poster || 'https://via.placeholder.com/400x600/1f2937/9ca3af?text=' + encodeURIComponent(movie.title),
+      fallbackUrl: movie.webPoster || ''
+    })).join('');
+    moviesGrid.classList.toggle('hidden', items.length === 0);
+    noMoviesFound.classList.toggle('hidden', items.length !== 0);
+    resultCounter.textContent = `Showing ${items.length} ${items.length === 1 ? 'movie' : 'movies'}`;
+  }
+
+  async function loadMovies() {
+    loadingState.classList.remove('hidden');
+    fetchError.classList.add('hidden');
+    try {
+      const params = new URLSearchParams();
+      if (currentQuery) params.set('q', currentQuery);
+      if (currentFilter !== 'All') params.set('category', currentFilter);
+      const payload = await request(`api/items?${params}`);
+      movies = payload.items || [];
+      renderMovies(movies);
+    } catch (error) {
       moviesGrid.classList.add('hidden');
       noMoviesFound.classList.add('hidden');
-      resultCounter.textContent = 'Connecting to service...';
-    } else {
+      fetchError.classList.remove('hidden');
+      $('fetch-error-msg').textContent = error.message;
+      resultCounter.textContent = 'Service unavailable';
+    } finally {
       loadingState.classList.add('hidden');
     }
   }
 
-  /**
-   * Display the failed fetch request error UI state
-   * @param {string} message
-   */
-  function setErrorState(message) {
-    loadingState.classList.add('hidden');
-    moviesGrid.classList.add('hidden');
-    noMoviesFound.classList.add('hidden');
-    fetchError.classList.remove('hidden');
-    fetchErrorMsg.textContent = message || 'Could not communicate with the server endpoint.';
-    resultCounter.textContent = 'Service unavailable';
+  function resetForm() {
+    movieForm.reset();
+    $('movie-id').value = '';
+    $('editor-title').textContent = 'Add movie';
+    showMessage($('form-message'), '');
   }
 
-  /**
-   * Render movie list using Mustache.js if available, falling back to Vanilla DOM
-   * @param {Array} movieStore
-   */
-  function renderMovies(movieStore) {
-    moviesGrid.innerHTML = '';
-
-    if (!movieStore || movieStore.length === 0) {
-      moviesGrid.classList.add('hidden');
-      noMoviesFound.classList.remove('hidden');
-      resultCounter.textContent = 'Showing 0 movies';
-      return;
+  function openEditor(movie = null) {
+    editorPanel.classList.remove('hidden');
+    resetForm();
+    if (movie) {
+      $('editor-title').textContent = 'Edit movie';
+      $('movie-id').value = movie.id;
+      $('movie-title').value = movie.title;
+      $('movie-category').value = movie.category;
+      $('movie-language').value = movie.language;
+      $('movie-genres').value = movie.genre.join(', ');
+      $('movie-rating').value = movie.rating;
+      $('movie-year').value = movie.year;
+      $('movie-poster').value = movie.poster || '';
+      $('movie-duration').value = movie.duration || '';
+      $('movie-description').value = movie.description || '';
     }
-
-    noMoviesFound.classList.add('hidden');
-    moviesGrid.classList.remove('hidden');
-    resultCounter.textContent = `Showing ${movieStore.length} ${movieStore.length === 1 ? 'movie' : 'movies'}`;
-
-    if (typeof Mustache !== 'undefined' && cardTemplate) {
-      const renderedCards = movieStore.map(movie => {
-        const genreString = Array.isArray(movie.genre) 
-          ? movie.genre.join(' • ') 
-          : (movie.category || '');
-        const fallbackUrl = 'https://via.placeholder.com/400x600/1f2937/9ca3af?text=' + encodeURIComponent(movie.title);
-        const posterUrl = movie.poster || movie.webPoster || fallbackUrl;
-
-        return Mustache.render(cardTemplate, {
-          id: movie.id,
-          title: movie.title,
-          category: movie.category,
-          language: movie.language,
-          genreString: genreString,
-          rating: movie.rating,
-          year: movie.year,
-          duration: movie.duration || '',
-          posterUrl: posterUrl,
-          fallbackUrl: movie.webPoster || fallbackUrl
-        });
-      }).join('');
-
-      moviesGrid.innerHTML = renderedCards;
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-
-    movieStore.forEach(movie => {
-      const card = document.createElement('article');
-      card.className = 'movie-card';
-      card.setAttribute('data-id', movie.id);
-      card.setAttribute('tabindex', '0');
-
-      const genreString = Array.isArray(movie.genre) 
-        ? movie.genre.join(' • ') 
-        : (movie.category || '');
-
-      card.innerHTML = `
-        <div class="poster-wrapper">
-          <img 
-            src="${movie.poster || movie.webPoster}" 
-            alt="${movie.title} Poster" 
-            class="movie-poster"
-            loading="lazy" 
-            onerror="this.onerror=null; this.src='${movie.webPoster || 'https://via.placeholder.com/400x600/1f2937/9ca3af?text=' + encodeURIComponent(movie.title)}';"
-          />
-          <span class="badge-rating" aria-label="Rating ${movie.rating} out of 10">⭐ ${movie.rating}</span>
-          <span class="badge-language">${movie.language}</span>
-        </div>
-        <div class="card-info">
-          <h3 class="movie-title">${movie.title}</h3>
-          <p class="genre-tags">${genreString}</p>
-          <div class="card-footer-meta">
-            <span class="movie-year">${movie.year}</span>
-            <span class="movie-duration">${movie.duration || ''}</span>
-          </div>
-        </div>
-      `;
-
-      fragment.appendChild(card);
-    });
-
-    moviesGrid.appendChild(fragment);
+    editorPanel.scrollIntoView({ behavior: 'smooth' });
   }
 
-
-  function applyFilterAndSearch() {
-    const query = searchQuery.trim().toLowerCase();
-
-    const filteredMovies = allMovies.filter(movie => {
-      let matchesFilter = false;
-      if (currentFilter === 'All') {
-        matchesFilter = true;
-      } else {
-        const catMatch = movie.category && movie.category.toLowerCase() === currentFilter.toLowerCase();
-        const langMatch = movie.language && movie.language.toLowerCase() === currentFilter.toLowerCase();
-        const genreMatch = Array.isArray(movie.genre) && movie.genre.some(g => g.toLowerCase() === currentFilter.toLowerCase());
-        matchesFilter = catMatch || langMatch || genreMatch;
-      }
-
-      let matchesSearch = true;
-      if (query !== '') {
-        const titleMatch = movie.title && movie.title.toLowerCase().includes(query);
-        const catMatch = movie.category && movie.category.toLowerCase().includes(query);
-        const langMatch = movie.language && movie.language.toLowerCase().includes(query);
-        const genreMatch = Array.isArray(movie.genre) && movie.genre.some(g => g.toLowerCase() === query);
-        const yearMatch = movie.year && movie.year.toString().includes(query);
-        
-        matchesSearch = titleMatch || catMatch || langMatch || genreMatch || yearMatch;
-      }
-
-      return matchesFilter && matchesSearch;
-    });
-
-    renderMovies(filteredMovies);
-  }
-
-  /**
-   * Asynchronously fetch movie data from PHP REST endpoint via Fetch API
-   * @param {string} endpointUrl 
-   */
-  async function fetchMovies(endpointUrl = 'api.php') {
-    setLoadingState(true);
-
+  $('login-form').addEventListener('submit', async event => {
+    event.preventDefault();
     try {
-      const response = await fetch(endpointUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
+      await request('api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: $('login-username').value, password: $('login-password').value })
       });
-
-      if (!response.ok) {
-        let errMessage = `Server returned HTTP status ${response.status} (${response.statusText})`;
-        try {
-          const errBody = await response.json();
-          if (errBody && errBody.message) {
-            errMessage = errBody.message;
-          }
-        } catch (_) {
-          // If body is not JSON, retain HTTP status message
-        }
-        throw new Error(errMessage);
-      }
-
-      const payload = await response.json();
-
-      if (!payload || !Array.isArray(payload.graph)) {
-        throw new Error('Received unexpected data format: missing "graph" array.');
-      }
-
-      allMovies = payload.graph;
-      setLoadingState(false);
-      applyFilterAndSearch();
-    } catch (err) {
-      console.error('Fetch operation failed:', err);
-      setErrorState(err.message || 'Failed to connect to the PHP data endpoint.');
+      loginModal.classList.add('hidden');
+      $('login-btn').classList.add('hidden');
+      $('logout-btn').classList.remove('hidden');
+      $('add-movie-btn').classList.remove('hidden');
+    } catch (error) {
+      showMessage($('login-message'), error.message);
     }
-  }
-
-  searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    if (searchQuery.length > 0) {
-      clearSearchBtn.classList.remove('hidden');
-    } else {
-      clearSearchBtn.classList.add('hidden');
-    }
-    applyFilterAndSearch();
   });
 
+  movieForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const id = $('movie-id').value;
+    const body = {
+      title: $('movie-title').value,
+      category: $('movie-category').value,
+      language: $('movie-language').value,
+      genres: $('movie-genres').value.split(',').map(value => value.trim()).filter(Boolean),
+      rating: Number($('movie-rating').value),
+      year: Number($('movie-year').value),
+      poster_url: $('movie-poster').value,
+      duration: $('movie-duration').value,
+      description: $('movie-description').value
+    };
+    try {
+      await request(id ? `api/items/${id}` : 'api/items', {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify(body)
+      });
+      editorPanel.classList.add('hidden');
+      await loadMovies();
+    } catch (error) {
+      showMessage($('form-message'), error.message);
+    }
+  });
+
+  $('movies-grid').addEventListener('click', event => {
+    const card = event.target.closest('.movie-card');
+    if (card && !$('login-btn').classList.contains('hidden')) return;
+    if (card) openEditor(movies.find(movie => String(movie.id) === card.dataset.id));
+  });
+  $('login-btn').addEventListener('click', () => loginModal.classList.remove('hidden'));
+  $('close-login-btn').addEventListener('click', () => loginModal.classList.add('hidden'));
+  $('logout-btn').addEventListener('click', async () => {
+    await request('api/logout', { method: 'POST' });
+    $('logout-btn').classList.add('hidden');
+    $('login-btn').classList.remove('hidden');
+    $('add-movie-btn').classList.add('hidden');
+    editorPanel.classList.add('hidden');
+  });
+  $('add-movie-btn').addEventListener('click', () => openEditor());
+  $('cancel-edit-btn').addEventListener('click', () => editorPanel.classList.add('hidden'));
+  $('retry-fetch-btn').addEventListener('click', loadMovies);
+  $('reset-filters-btn').addEventListener('click', () => {
+    currentFilter = 'All';
+    currentQuery = '';
+    searchInput.value = '';
+    document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'All'));
+    loadMovies();
+  });
+  searchInput.addEventListener('input', () => {
+    currentQuery = searchInput.value.trim();
+    clearSearchBtn.classList.toggle('hidden', !currentQuery);
+    clearTimeout(searchInput.searchTimer);
+    searchInput.searchTimer = setTimeout(loadMovies, 250);
+  });
   clearSearchBtn.addEventListener('click', () => {
     searchInput.value = '';
-    searchQuery = '';
+    currentQuery = '';
     clearSearchBtn.classList.add('hidden');
-    searchInput.focus();
-    applyFilterAndSearch();
+    loadMovies();
   });
-
-  filterChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      filterChips.forEach(c => {
-        c.classList.remove('active');
-        c.setAttribute('aria-selected', 'false');
-      });
-      chip.classList.add('active');
-      chip.setAttribute('aria-selected', 'true');
-
-      currentFilter = chip.getAttribute('data-filter');
-      applyFilterAndSearch();
-    });
-  });
-
-  resetFiltersBtn.addEventListener('click', () => {
-    currentFilter = 'All';
-    searchQuery = '';
-    searchInput.value = '';
-    clearSearchBtn.classList.add('hidden');
-
-    filterChips.forEach(c => {
-      if (c.getAttribute('data-filter') === 'All') {
-        c.classList.add('active');
-        c.setAttribute('aria-selected', 'true');
-      } else {
-        c.classList.remove('active');
-        c.setAttribute('aria-selected', 'false');
-      }
-    });
-
-    applyFilterAndSearch();
-  });
-
-  retryFetchBtn.addEventListener('click', () => {
-    fetchMovies();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement !== searchInput) {
-      e.preventDefault();
-      searchInput.focus();
-    } else if (e.key === 'Escape' && document.activeElement === searchInput) {
-      searchInput.value = '';
-      searchQuery = '';
-      clearSearchBtn.classList.add('hidden');
-      searchInput.blur();
-      applyFilterAndSearch();
-    }
-  });
-
-  fetchMovies();
+  document.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => {
+    currentFilter = chip.dataset.filter;
+    document.querySelectorAll('.filter-chip').forEach(item => item.classList.toggle('active', item === chip));
+    loadMovies();
+  }));
+  loadMovies();
 });

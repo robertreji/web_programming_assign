@@ -16,6 +16,11 @@
         <span class="logo-badge">GEC</span>
         <span class="logo-text">MOVIES</span>
       </div>
+      <div class="auth-actions">
+        <button type="button" id="add-movie-btn" class="header-btn hidden">Add movie</button>
+        <button type="button" id="login-btn" class="header-btn">Staff login</button>
+        <button type="button" id="logout-btn" class="header-btn hidden">Logout</button>
+      </div>
 
       <div class="search-box-wrapper">
         <div class="search-box">
@@ -38,6 +43,27 @@
     <div class="hero-content">
       <h1 class="hero-title">Experience Cinema at GEC Movies</h1>
     </div>
+  </section>
+
+  <section id="editor-panel" class="editor-panel hidden" aria-label="Movie editor">
+    <h2 id="editor-title">Add movie</h2>
+    <form id="movie-form" class="movie-form">
+      <input type="hidden" id="movie-id" />
+      <label>Title <input id="movie-title" required maxlength="180" /></label>
+      <label>Category <input id="movie-category" required maxlength="60" /></label>
+      <label>Language <input id="movie-language" required maxlength="60" /></label>
+      <label>Genres (comma separated) <input id="movie-genres" required /></label>
+      <label>Rating <input id="movie-rating" type="number" min="0" max="10" step="0.1" required /></label>
+      <label>Release year <input id="movie-year" type="number" min="1900" max="2100" required /></label>
+      <label>Poster URL <input id="movie-poster" type="url" /></label>
+      <label>Duration <input id="movie-duration" maxlength="30" /></label>
+      <label class="form-wide">Description <textarea id="movie-description"></textarea></label>
+      <div class="form-actions form-wide">
+        <button type="submit" class="primary-btn">Save movie</button>
+        <button type="button" id="cancel-edit-btn" class="secondary-btn">Cancel</button>
+      </div>
+      <p id="form-message" class="form-message form-wide" role="alert"></p>
+    </form>
   </section>
 
   <main class="main-content" id="movies-section">
@@ -93,7 +119,7 @@
     <div class="footer-container">
       <div class="footer-brand">
         <span class="footer-logo">GEC MOVIES</span>
-        <p>Government Engineering College Wayanad • Web Programming Assignment 2</p>
+        <p>Government Engineering College Wayanad • Web Programming Assignment 3</p>
       </div>
       <p class="footer-copy">&copy; 2026 GEC Wayanad. Decoupled Architecture (Fetch API + PHP REST Data Provider).</p>
     </div>
@@ -127,6 +153,18 @@
   <!-- Mustache.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/mustache.min.js"></script>
   <!-- Client Application Script (Asynchronous Fetch API & DOM Rendering) -->
+  <div id="login-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+    <form id="login-form" class="login-form">
+      <h2 id="login-title">Staff login</h2>
+      <label>Username <input id="login-username" required autocomplete="username" /></label>
+      <label>Password <input id="login-password" type="password" required autocomplete="current-password" /></label>
+      <p id="login-message" class="form-message" role="alert"></p>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">Login</button>
+        <button type="button" id="close-login-btn" class="secondary-btn">Cancel</button>
+      </div>
+    </form>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
